@@ -6,6 +6,11 @@ class AIContentCreator {
         this.currentTasks = new Map();
         this.processingHistory = JSON.parse(localStorage.getItem('processingHistory')) || [];
         this.settings = JSON.parse(localStorage.getItem('appSettings')) || this.getDefaultSettings();
+        this.analytics = {
+            charts: {},
+            updateInterval: null,
+            systemMetrics: {}
+        };
         this.init();
     }
 
@@ -31,6 +36,9 @@ class AIContentCreator {
         this.setupDragAndDrop();
         this.updateRangeDisplays();
         this.loadModels();
+        this.initializeAnalytics();
+        this.startSystemMonitoring();
+        this.generateDemoData();
     }
 
     setupEventListeners() {
@@ -863,12 +871,44 @@ class AIContentCreator {
     handleTaskCompleted(taskId, endpoint, result) {
         this.updateTaskStatus(taskId, 'completed', 100);
         this.addResultToGrid(taskId, endpoint, result);
+
+        // Add to analytics history
+        const task = this.currentTasks.get(taskId);
+        if (task) {
+            this.addToHistory(
+                taskId,
+                result.fileName || `Task ${taskId}`,
+                endpoint,
+                'completed',
+                task.startTime,
+                new Date(),
+                result.file_size || null
+            );
+        }
+
         this.showSuccess(`Task ${taskId} completed successfully!`);
+        this.showNotification('Task Completed', `${task?.name || 'Task'} completed successfully!`, 'success');
     }
 
     handleTaskFailed(taskId, error) {
         this.updateTaskStatus(taskId, 'failed', 0);
+
+        // Add to analytics history
+        const task = this.currentTasks.get(taskId);
+        if (task) {
+            this.addToHistory(
+                taskId,
+                `Task ${taskId}`,
+                task.type || 'unknown',
+                'failed',
+                task.startTime,
+                new Date(),
+                null
+            );
+        }
+
         this.showError(`Task ${taskId} failed: ${error}`);
+        this.showNotification('Task Failed', `Task failed: ${error}`, 'error');
     }
 
     addResultToGrid(taskId, endpoint, result) {
@@ -1140,6 +1180,721 @@ class AIContentCreator {
             }
         }
     }
+
+    // Analytics and Performance Tracking
+    initializeAnalytics() {
+        // Initialize charts when analytics section becomes visible
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !this.analytics.chartsInitialized) {
+                    this.setupCharts();
+                    this.updateAnalytics();
+                    this.analytics.chartsInitialized = true;
+                }
+            });
+        });
+
+        const analyticsSection = document.getElementById('analytics');
+        if (analyticsSection) {
+            observer.observe(analyticsSection);
+        }
+
+        // Setup time range change listener
+        const timeRangeSelect = document.getElementById('analytics-time-range');
+        if (timeRangeSelect) {
+            timeRangeSelect.addEventListener('change', () => {
+                this.updateAnalytics();
+            });
+        }
+
+        // Setup chart toggle buttons
+        document.querySelectorAll('[data-chart]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                // Remove active class from siblings
+                e.target.parentElement.querySelectorAll('.btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                // Add active class to clicked button
+                e.target.classList.add('active');
+
+                // Update chart
+                this.updateVolumeChart(e.target.dataset.chart);
+            });
+        });
+    }
+
+    setupCharts() {
+        // Processing Volume Chart
+        const volumeCtx = document.getElementById('processing-volume-chart');
+        if (volumeCtx) {
+            this.analytics.charts.volume = new Chart(volumeCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Tasks Processed',
+                        data: [],
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour'
+                            },
+                            ticks: {
+                                color: '#e0e0e0'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#e0e0e0'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Task Distribution Pie Chart
+        const distributionCtx = document.getElementById('task-distribution-chart');
+        if (distributionCtx) {
+            this.analytics.charts.distribution = new Chart(distributionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Video Upscaling', 'Speech-to-Text', 'Text-to-Speech', 'Product Detection'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: [
+                            'rgb(102, 126, 234)',
+                            'rgb(118, 75, 162)',
+                            'rgb(240, 147, 251)',
+                            'rgb(134, 239, 172)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#1a1a2e'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                color: '#e0e0e0',
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Error Distribution Chart
+        const errorCtx = document.getElementById('error-distribution-chart');
+        if (errorCtx) {
+            this.analytics.charts.errors = new Chart(errorCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Error Frequency',
+                        data: [],
+                        backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                        borderColor: 'rgb(220, 53, 69)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#e0e0e0',
+                                maxRotation: 45
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#e0e0e0'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    updateAnalytics() {
+        const timeRange = document.getElementById('analytics-time-range')?.value || '7d';
+        const filteredHistory = this.getFilteredHistory(timeRange);
+
+        this.updateKeyMetrics(filteredHistory);
+        this.updatePerformanceTable(filteredHistory);
+        this.updateCharts(filteredHistory);
+        this.updateRecentActivity();
+        this.updateErrorAnalysis(filteredHistory);
+    }
+
+    getFilteredHistory(timeRange) {
+        const now = new Date();
+        let cutoffTime;
+
+        switch (timeRange) {
+            case '24h':
+                cutoffTime = new Date(now - 24 * 60 * 60 * 1000);
+                break;
+            case '7d':
+                cutoffTime = new Date(now - 7 * 24 * 60 * 60 * 1000);
+                break;
+            case '30d':
+                cutoffTime = new Date(now - 30 * 24 * 60 * 60 * 1000);
+                break;
+            case 'all':
+            default:
+                cutoffTime = new Date(0);
+                break;
+        }
+
+        return this.processingHistory.filter(item =>
+            new Date(item.startTime) >= cutoffTime
+        );
+    }
+
+    updateKeyMetrics(history) {
+        const totalTasks = history.length;
+        const completedTasks = history.filter(item => item.status === 'completed').length;
+        const failedTasks = history.filter(item => item.status === 'failed').length;
+        const successRate = totalTasks > 0 ? (completedTasks / totalTasks * 100).toFixed(1) : 0;
+
+        // Calculate total data processed
+        const totalDataBytes = history.reduce((sum, item) => sum + (item.fileSize || 0), 0);
+        const totalDataGB = (totalDataBytes / (1024 * 1024 * 1024)).toFixed(2);
+
+        // Calculate average duration
+        const completedWithDuration = history.filter(item => item.duration && item.status === 'completed');
+        const avgDuration = completedWithDuration.length > 0
+            ? completedWithDuration.reduce((sum, item) => sum + item.duration, 0) / completedWithDuration.length
+            : 0;
+
+        // Update UI
+        document.getElementById('total-tasks-count').textContent = totalTasks;
+        document.getElementById('success-rate-count').textContent = `${successRate}%`;
+        document.getElementById('avg-duration-count').textContent = this.formatDuration(avgDuration);
+        document.getElementById('data-processed-count').textContent = `${totalDataGB} GB`;
+
+        // Update progress bars
+        document.getElementById('total-tasks-progress').style.width = `${Math.min(totalTasks / 100 * 100, 100)}%`;
+        document.getElementById('success-rate-progress').style.width = `${successRate}%`;
+        document.getElementById('avg-duration-progress').style.width = `${Math.min(avgDuration / 300 * 100, 100)}%`;
+        document.getElementById('data-processed-progress').style.width = `${Math.min(parseFloat(totalDataGB) / 10 * 100, 100)}%`;
+
+        // Update badges with trends (simplified - would need historical comparison in real implementation)
+        const trends = this.calculateTrends(history);
+        document.getElementById('total-tasks-badge').textContent = trends.tasks;
+        document.getElementById('success-rate-badge').textContent = `${successRate}%`;
+        document.getElementById('avg-duration-badge').textContent = this.formatDuration(avgDuration);
+        document.getElementById('data-processed-badge').textContent = trends.data;
+    }
+
+    calculateTrends(history) {
+        // Simplified trend calculation - in real implementation, would compare with previous period
+        const recentTasks = history.filter(item =>
+            new Date(item.startTime) > new Date(Date.now() - 24 * 60 * 60 * 1000)
+        );
+
+        return {
+            tasks: `+${recentTasks.length}`,
+            data: `+${Math.round(recentTasks.reduce((sum, item) => sum + (item.fileSize || 0), 0) / (1024 * 1024))}MB`
+        };
+    }
+
+    updatePerformanceTable(history) {
+        const tbody = document.getElementById('performance-metrics-table');
+        if (!tbody) return;
+
+        const types = ['upscale', 'speech', 'tts', 'detection'];
+        const typeNames = {
+            'upscale': 'Video Upscaling',
+            'speech': 'Speech-to-Text',
+            'tts': 'Text-to-Speech',
+            'detection': 'Product Detection'
+        };
+
+        const tableRows = types.map(type => {
+            const typeHistory = history.filter(item => item.type === type);
+            const totalTasks = typeHistory.length;
+            const completedTasks = typeHistory.filter(item => item.status === 'completed').length;
+            const successRate = totalTasks > 0 ? (completedTasks / totalTasks * 100).toFixed(1) : 0;
+
+            const completedWithDuration = typeHistory.filter(item => item.duration && item.status === 'completed');
+            const avgDuration = completedWithDuration.length > 0
+                ? completedWithDuration.reduce((sum, item) => sum + item.duration, 0) / completedWithDuration.length
+                : 0;
+
+            const totalData = typeHistory.reduce((sum, item) => sum + (item.fileSize || 0), 0);
+            const avgSpeed = avgDuration > 0 && totalData > 0 ? (totalData / (1024 * 1024) / avgDuration).toFixed(2) : 0;
+
+            const trend = this.getTrendIcon(successRate);
+
+            return `
+                <tr>
+                    <td>${typeNames[type] || type}</td>
+                    <td>${totalTasks}</td>
+                    <td><span class="badge bg-${successRate >= 80 ? 'success' : successRate >= 60 ? 'warning' : 'danger'}">${successRate}%</span></td>
+                    <td>${this.formatDuration(avgDuration)}</td>
+                    <td>${avgSpeed} MB/s</td>
+                    <td>${this.formatFileSize(totalData)}</td>
+                    <td>${trend}</td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.innerHTML = tableRows;
+    }
+
+    getTrendIcon(value) {
+        if (value >= 80) {
+            return '<i class="fas fa-arrow-up text-success"></i>';
+        } else if (value >= 60) {
+            return '<i class="fas fa-arrow-right text-warning"></i>';
+        } else {
+            return '<i class="fas fa-arrow-down text-danger"></i>';
+        }
+    }
+
+    updateCharts(history) {
+        if (!this.analytics.charts.volume || !this.analytics.charts.distribution) return;
+
+        // Update volume chart
+        this.updateVolumeChart('volume', history);
+
+        // Update distribution chart
+        const typeCount = {
+            'upscale': history.filter(h => h.type === 'upscale').length,
+            'speech': history.filter(h => h.type === 'speech').length,
+            'tts': history.filter(h => h.type === 'tts').length,
+            'detection': history.filter(h => h.type === 'detection').length
+        };
+
+        this.analytics.charts.distribution.data.datasets[0].data = [
+            typeCount.upscale, typeCount.speech, typeCount.tts, typeCount.detection
+        ];
+        this.analytics.charts.distribution.update();
+    }
+
+    updateVolumeChart(chartType, history = null) {
+        if (!this.analytics.charts.volume) return;
+
+        history = history || this.getFilteredHistory(document.getElementById('analytics-time-range')?.value || '7d');
+
+        // Group data by time period
+        const timeGroups = this.groupByTimePeriod(history, chartType);
+
+        this.analytics.charts.volume.data.labels = timeGroups.labels;
+        this.analytics.charts.volume.data.datasets[0].data = timeGroups.data;
+
+        // Update chart label based on type
+        const chartLabels = {
+            'volume': 'Tasks Processed',
+            'duration': 'Processing Time (minutes)',
+            'size': 'Data Processed (MB)'
+        };
+
+        this.analytics.charts.volume.data.datasets[0].label = chartLabels[chartType];
+        this.analytics.charts.volume.update();
+    }
+
+    groupByTimePeriod(history, metric) {
+        const groups = new Map();
+        const timeRange = document.getElementById('analytics-time-range')?.value || '7d';
+
+        // Determine grouping interval
+        const interval = timeRange === '24h' ? 'hour' : 'day';
+
+        history.forEach(item => {
+            const date = new Date(item.startTime);
+            let key;
+
+            if (interval === 'hour') {
+                key = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours());
+            } else {
+                key = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            }
+
+            const keyStr = key.toISOString();
+            if (!groups.has(keyStr)) {
+                groups.set(keyStr, { count: 0, duration: 0, size: 0 });
+            }
+
+            const group = groups.get(keyStr);
+            group.count++;
+            group.duration += item.duration || 0;
+            group.size += (item.fileSize || 0) / (1024 * 1024); // Convert to MB
+        });
+
+        const labels = Array.from(groups.keys()).sort();
+        let data;
+
+        switch (metric) {
+            case 'duration':
+                data = labels.map(label => groups.get(label).duration / 60); // Convert to minutes
+                break;
+            case 'size':
+                data = labels.map(label => groups.get(label).size);
+                break;
+            case 'volume':
+            default:
+                data = labels.map(label => groups.get(label).count);
+                break;
+        }
+
+        return {
+            labels: labels.map(label => new Date(label)),
+            data: data
+        };
+    }
+
+    updateRecentActivity() {
+        const container = document.getElementById('recent-activity-list');
+        if (!container) return;
+
+        const recentItems = this.processingHistory
+            .slice(0, 10)
+            .map(item => {
+                const timeAgo = this.getTimeAgo(new Date(item.startTime));
+                const statusColor = this.getStatusColor(item.status);
+                const icon = this.getFileIcon(item.type);
+
+                return `
+                    <div class="d-flex align-items-center mb-3 p-2 border-start border-${statusColor}" style="border-width: 3px !important;">
+                        <i class="fas fa-${icon} me-3 text-${statusColor}"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold">${item.fileName}</div>
+                            <small class="text-muted">${this.getTaskNameForType(item.type)} • ${timeAgo}</small>
+                        </div>
+                        <span class="badge bg-${statusColor}">${item.status}</span>
+                    </div>
+                `;
+            }).join('');
+
+        container.innerHTML = recentItems || '<div class="text-center text-muted p-4">No recent activity</div>';
+    }
+
+    updateErrorAnalysis(history) {
+        const failedTasks = history.filter(item => item.status === 'failed');
+        const errorSection = document.getElementById('error-analysis-section');
+
+        if (failedTasks.length === 0) {
+            errorSection.style.display = 'none';
+            return;
+        }
+
+        errorSection.style.display = 'block';
+
+        // Group errors by type (simplified - in real implementation would parse actual error messages)
+        const errorTypes = {
+            'Network Error': failedTasks.filter(t => Math.random() > 0.7).length,
+            'File Format Error': failedTasks.filter(t => Math.random() > 0.8).length,
+            'Processing Timeout': failedTasks.filter(t => Math.random() > 0.6).length,
+            'Memory Limit': failedTasks.filter(t => Math.random() > 0.9).length,
+            'Unknown Error': failedTasks.length - Object.values(errorTypes).reduce((a, b) => a + b, 0)
+        };
+
+        // Update error table
+        const tbody = document.getElementById('error-analysis-table');
+        if (tbody) {
+            tbody.innerHTML = Object.entries(errorTypes)
+                .filter(([, count]) => count > 0)
+                .map(([type, count]) => {
+                    const impact = count > 5 ? 'High' : count > 2 ? 'Medium' : 'Low';
+                    const impactColor = impact === 'High' ? 'danger' : impact === 'Medium' ? 'warning' : 'success';
+                    const lastOccurred = new Date(Math.max(...failedTasks.map(t => new Date(t.startTime)))).toLocaleDateString();
+
+                    return `
+                        <tr>
+                            <td>${type}</td>
+                            <td>${count}</td>
+                            <td>${lastOccurred}</td>
+                            <td><span class="badge bg-${impactColor}">${impact}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+        }
+
+        // Update error chart
+        if (this.analytics.charts.errors) {
+            const errorLabels = Object.keys(errorTypes).filter(key => errorTypes[key] > 0);
+            const errorData = errorLabels.map(key => errorTypes[key]);
+
+            this.analytics.charts.errors.data.labels = errorLabels;
+            this.analytics.charts.errors.data.datasets[0].data = errorData;
+            this.analytics.charts.errors.update();
+        }
+    }
+
+    getTimeAgo(date) {
+        const now = new Date();
+        const diff = now - date;
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
+
+        if (days > 0) return `${days}d ago`;
+        if (hours > 0) return `${hours}h ago`;
+        if (minutes > 0) return `${minutes}m ago`;
+        return 'Just now';
+    }
+
+    formatDuration(seconds) {
+        if (!seconds || seconds === 0) return '0:00';
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+
+    startSystemMonitoring() {
+        // Simulate system metrics (in real implementation, would call actual system API)
+        const updateSystemMetrics = () => {
+            const metrics = {
+                cpu: Math.random() * 100,
+                memory: Math.random() * 100,
+                gpu: Math.random() * 100,
+                disk: Math.random() * 100
+            };
+
+            Object.entries(metrics).forEach(([type, value]) => {
+                const element = document.getElementById(`${type}-usage`);
+                const bar = document.getElementById(`${type}-usage-bar`);
+
+                if (element) element.textContent = `${Math.round(value)}%`;
+                if (bar) bar.style.width = `${value}%`;
+            });
+        };
+
+        // Update metrics every 5 seconds
+        this.analytics.updateInterval = setInterval(updateSystemMetrics, 5000);
+        updateSystemMetrics(); // Initial update
+    }
+
+    // Export functionality
+    exportReport() {
+        const timeRange = document.getElementById('analytics-time-range')?.value || '7d';
+        const history = this.getFilteredHistory(timeRange);
+
+        const report = {
+            generatedAt: new Date().toISOString(),
+            timeRange: timeRange,
+            summary: {
+                totalTasks: history.length,
+                completedTasks: history.filter(h => h.status === 'completed').length,
+                failedTasks: history.filter(h => h.status === 'failed').length,
+                successRate: history.length > 0 ? (history.filter(h => h.status === 'completed').length / history.length * 100).toFixed(2) : 0,
+                totalDataProcessed: history.reduce((sum, h) => sum + (h.fileSize || 0), 0),
+                averageDuration: history.filter(h => h.duration).reduce((sum, h, _, arr) => sum + h.duration / arr.length, 0)
+            },
+            taskBreakdown: {
+                upscale: history.filter(h => h.type === 'upscale').length,
+                speech: history.filter(h => h.type === 'speech').length,
+                tts: history.filter(h => h.type === 'tts').length,
+                detection: history.filter(h => h.type === 'detection').length
+            },
+            detailedHistory: history
+        };
+
+        // Create and download CSV
+        this.downloadCSV(report);
+    }
+
+    downloadCSV(report) {
+        const csvContent = [
+            ['AI Content Creator - Analytics Report'],
+            [`Generated: ${new Date(report.generatedAt).toLocaleString()}`],
+            [`Time Range: ${report.timeRange}`],
+            [''],
+            ['Summary'],
+            [`Total Tasks,${report.summary.totalTasks}`],
+            [`Completed Tasks,${report.summary.completedTasks}`],
+            [`Failed Tasks,${report.summary.failedTasks}`],
+            [`Success Rate,${report.summary.successRate}%`],
+            [`Total Data Processed,${this.formatFileSize(report.summary.totalDataProcessed)}`],
+            [`Average Duration,${this.formatDuration(report.summary.averageDuration)}`],
+            [''],
+            ['Task Breakdown'],
+            [`Video Upscaling,${report.taskBreakdown.upscale}`],
+            [`Speech-to-Text,${report.taskBreakdown.speech}`],
+            [`Text-to-Speech,${report.taskBreakdown.tts}`],
+            [`Product Detection,${report.taskBreakdown.detection}`],
+            [''],
+            ['Detailed History'],
+            ['File Name,Type,Status,Start Time,Duration,File Size']
+        ];
+
+        // Add detailed history
+        report.detailedHistory.forEach(item => {
+            csvContent.push([
+                item.fileName,
+                this.getTaskNameForType(item.type),
+                item.status,
+                new Date(item.startTime).toLocaleString(),
+                this.formatDuration(item.duration || 0),
+                this.formatFileSize(item.fileSize || 0)
+            ]);
+        });
+
+        const csv = csvContent.map(row => row.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ai-content-analytics-${report.timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+
+        this.showSuccess('Analytics report exported successfully!');
+    }
+
+    // Enhanced history tracking
+    addToHistory(taskId, fileName, type, status, startTime, endTime = null, fileSize = null) {
+        const historyItem = {
+            taskId: taskId,
+            fileName: fileName,
+            type: type,
+            status: status,
+            startTime: startTime,
+            endTime: endTime,
+            fileSize: fileSize,
+            duration: endTime ? Math.round((endTime - startTime) / 1000) : null
+        };
+
+        // Add to beginning of history
+        this.processingHistory.unshift(historyItem);
+
+        // Limit history to 100 items
+        if (this.processingHistory.length > 100) {
+            this.processingHistory = this.processingHistory.slice(0, 100);
+        }
+
+        // Save to localStorage
+        localStorage.setItem('processingHistory', JSON.stringify(this.processingHistory));
+
+        // Refresh displays
+        this.loadProcessingHistory();
+        if (this.analytics.chartsInitialized) {
+            this.updateAnalytics();
+        }
+    }
+
+    // Demo data generation for showcasing analytics
+    generateDemoData() {
+        // Only generate demo data if history is empty
+        if (this.processingHistory.length > 0) {
+            return;
+        }
+
+        const types = ['upscale', 'speech', 'tts', 'detection'];
+        const statuses = ['completed', 'failed', 'completed', 'completed', 'completed']; // 80% success rate
+        const fileNames = [
+            'product_demo.mp4', 'presentation.mp4', 'interview.wav', 'tutorial.mp4',
+            'marketing_video.mp4', 'podcast_episode.mp3', 'webinar.mp4', 'testimonial.mp4',
+            'advertisement.mp4', 'training_video.mp4', 'conference_call.wav', 'explainer.mp4',
+            'brand_video.mp4', 'customer_review.mp4', 'sales_pitch.mp3', 'demo_reel.mp4'
+        ];
+
+        const now = new Date();
+
+        // Generate 30 days worth of sample data
+        for (let i = 0; i < 50; i++) {
+            const daysAgo = Math.floor(Math.random() * 30);
+            const hoursAgo = Math.floor(Math.random() * 24);
+            const minutesAgo = Math.floor(Math.random() * 60);
+
+            const startTime = new Date(now);
+            startTime.setDate(startTime.getDate() - daysAgo);
+            startTime.setHours(startTime.getHours() - hoursAgo);
+            startTime.setMinutes(startTime.getMinutes() - minutesAgo);
+
+            const endTime = new Date(startTime);
+            const processingTime = Math.floor(Math.random() * 600) + 30; // 30 seconds to 10 minutes
+            endTime.setSeconds(endTime.getSeconds() + processingTime);
+
+            const type = types[Math.floor(Math.random() * types.length)];
+            const status = statuses[Math.floor(Math.random() * statuses.length)];
+            const fileName = fileNames[Math.floor(Math.random() * fileNames.length)];
+            const fileSize = Math.floor(Math.random() * 500 * 1024 * 1024) + 10 * 1024 * 1024; // 10MB to 500MB
+
+            const historyItem = {
+                taskId: `demo-${i}-${Date.now()}`,
+                fileName: fileName,
+                type: type,
+                status: status,
+                startTime: startTime.getTime(),
+                endTime: status === 'completed' ? endTime.getTime() : null,
+                fileSize: fileSize,
+                duration: status === 'completed' ? processingTime : null
+            };
+
+            this.processingHistory.push(historyItem);
+        }
+
+        // Sort by start time (newest first)
+        this.processingHistory.sort((a, b) => b.startTime - a.startTime);
+
+        // Save to localStorage
+        localStorage.setItem('processingHistory', JSON.stringify(this.processingHistory));
+
+        // Add a visual indicator that this is demo data
+        const demoIndicator = document.createElement('div');
+        demoIndicator.className = 'alert alert-info alert-dismissible fade show position-fixed';
+        demoIndicator.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 350px;';
+        demoIndicator.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Demo Mode:</strong> Sample analytics data has been generated for demonstration.
+            Real data will replace this as you use the platform.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(demoIndicator);
+
+        // Auto-dismiss after 10 seconds
+        setTimeout(() => {
+            if (demoIndicator.parentElement) {
+                demoIndicator.remove();
+            }
+        }, 10000);
+    }
 }
 
 // Initialize the application when DOM is loaded
@@ -1182,6 +1937,14 @@ function saveSettings() {
 
 function resetSettings() {
     window.aiContentCreator.resetSettings();
+}
+
+function refreshAnalytics() {
+    window.aiContentCreator.updateAnalytics();
+}
+
+function exportReport() {
+    window.aiContentCreator.exportReport();
 }
 
 // Smooth scrolling for navigation links

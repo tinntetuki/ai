@@ -271,6 +271,9 @@
                         <a class="nav-link" href="#history">History</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#analytics">Analytics</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#settingsModal">Settings</a>
                     </li>
                     <li class="nav-item">
@@ -718,6 +721,239 @@
         </div>
     </section>
 
+    <!-- Analytics Dashboard Section -->
+    <section id="analytics" class="py-5">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-chart-line me-2"></i>Analytics & Performance</h2>
+                <div>
+                    <select class="form-select d-inline-block w-auto me-2" id="analytics-time-range">
+                        <option value="24h">Last 24 Hours</option>
+                        <option value="7d" selected>Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="all">All Time</option>
+                    </select>
+                    <button class="btn btn-outline-primary btn-sm me-2" onclick="refreshAnalytics()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="exportReport()">
+                        <i class="fas fa-download"></i> Export Report
+                    </button>
+                </div>
+            </div>
+
+            <!-- Key Metrics Cards -->
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="feature-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-tasks me-2 text-primary"></i>Total Tasks</h6>
+                            <span class="badge bg-primary" id="total-tasks-badge">+0%</span>
+                        </div>
+                        <h3 class="mb-1" id="total-tasks-count">0</h3>
+                        <small class="text-muted">All time processing tasks</small>
+                        <div class="mt-2">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar" id="total-tasks-progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="feature-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-check-circle me-2 text-success"></i>Success Rate</h6>
+                            <span class="badge bg-success" id="success-rate-badge">0%</span>
+                        </div>
+                        <h3 class="mb-1" id="success-rate-count">0%</h3>
+                        <small class="text-muted">Successful completions</small>
+                        <div class="mt-2">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-success" id="success-rate-progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="feature-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-clock me-2 text-info"></i>Avg Duration</h6>
+                            <span class="badge bg-info" id="avg-duration-badge">0s</span>
+                        </div>
+                        <h3 class="mb-1" id="avg-duration-count">0:00</h3>
+                        <small class="text-muted">Average processing time</small>
+                        <div class="mt-2">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-info" id="avg-duration-progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-3">
+                    <div class="feature-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-hdd me-2 text-warning"></i>Data Processed</h6>
+                            <span class="badge bg-warning" id="data-processed-badge">+0MB</span>
+                        </div>
+                        <h3 class="mb-1" id="data-processed-count">0 GB</h3>
+                        <small class="text-muted">Total data processed</small>
+                        <div class="mt-2">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar bg-warning" id="data-processed-progress" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="row mb-4">
+                <!-- Processing Volume Chart -->
+                <div class="col-lg-8 mb-4">
+                    <div class="feature-card h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="fas fa-chart-area me-2"></i>Processing Volume</h5>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-light active" data-chart="volume">Volume</button>
+                                <button type="button" class="btn btn-outline-light" data-chart="duration">Duration</button>
+                                <button type="button" class="btn btn-outline-light" data-chart="size">Data Size</button>
+                            </div>
+                        </div>
+                        <div style="height: 300px;">
+                            <canvas id="processing-volume-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Distribution -->
+                <div class="col-lg-4 mb-4">
+                    <div class="feature-card h-100">
+                        <h5 class="mb-3"><i class="fas fa-chart-pie me-2"></i>Task Distribution</h5>
+                        <div style="height: 300px;">
+                            <canvas id="task-distribution-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics Table -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="feature-card">
+                        <h5 class="mb-3"><i class="fas fa-tachometer-alt me-2"></i>Performance Metrics</h5>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Processing Type</th>
+                                        <th>Total Tasks</th>
+                                        <th>Success Rate</th>
+                                        <th>Avg Duration</th>
+                                        <th>Avg Speed</th>
+                                        <th>Total Data</th>
+                                        <th>Trend</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="performance-metrics-table">
+                                    <!-- Performance metrics will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Performance -->
+            <div class="row">
+                <div class="col-lg-6 mb-4">
+                    <div class="feature-card h-100">
+                        <h5 class="mb-3"><i class="fas fa-server me-2"></i>System Performance</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar bg-info" id="cpu-usage-bar" style="width: 0%"></div>
+                                    </div>
+                                    <h6 class="mb-1" id="cpu-usage">0%</h6>
+                                    <small class="text-muted">CPU Usage</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" id="memory-usage-bar" style="width: 0%"></div>
+                                    </div>
+                                    <h6 class="mb-1" id="memory-usage">0%</h6>
+                                    <small class="text-muted">Memory Usage</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar bg-success" id="gpu-usage-bar" style="width: 0%"></div>
+                                    </div>
+                                    <h6 class="mb-1" id="gpu-usage">0%</h6>
+                                    <small class="text-muted">GPU Usage</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 border rounded mb-3">
+                                    <div class="progress mb-2" style="height: 8px;">
+                                        <div class="progress-bar bg-danger" id="disk-usage-bar" style="width: 0%"></div>
+                                    </div>
+                                    <h6 class="mb-1" id="disk-usage">0%</h6>
+                                    <small class="text-muted">Disk Usage</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6 mb-4">
+                    <div class="feature-card h-100">
+                        <h5 class="mb-3"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                        <div id="recent-activity-list" style="max-height: 280px; overflow-y: auto;">
+                            <!-- Recent activity items will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Analysis -->
+            <div class="row mb-4" id="error-analysis-section" style="display: none;">
+                <div class="col-12">
+                    <div class="feature-card">
+                        <h5 class="mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Error Analysis</h5>
+                        <div class="row">
+                            <div class="col-lg-8">
+                                <div class="table-responsive">
+                                    <table class="table table-dark table-striped table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Error Type</th>
+                                                <th>Frequency</th>
+                                                <th>Last Occurred</th>
+                                                <th>Impact</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="error-analysis-table">
+                                            <!-- Error analysis will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div style="height: 200px;">
+                                    <canvas id="error-distribution-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Settings Modal -->
     <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -878,6 +1114,9 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.1/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Custom JS -->
     <script src="static/js/app.js"></script>
 </body>
