@@ -1,0 +1,73 @@
+# Docker Compose for Development Environment
+# Simplified setup for development with hot reloading
+
+version: '3.8'
+
+services:
+  # Development API service with hot reload
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: ai-content-api-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DATA_PATH=/app/data
+      - OUTPUT_PATH=/app/data/output
+      - TEMP_PATH=/app/data/temp
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/home/app  # Mount entire project for development
+      - ./data:/home/app/data
+      - ./logs:/home/app/logs
+      - ai_models_dev:/home/app/.cache
+    depends_on:
+      - redis
+    networks:
+      - ai-network-dev
+    stdin_open: true
+    tty: true
+
+  # Redis for development
+  redis:
+    image: redis:7-alpine
+    container_name: ai-content-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    networks:
+      - ai-network-dev
+
+  # Jupyter notebook for development and experimentation
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: ai-content-jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    volumes:
+      - .:/home/app
+      - ./notebooks:/home/app/notebooks
+      - ai_models_dev:/home/app/.cache
+    networks:
+      - ai-network-dev
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+
+networks:
+  ai-network-dev:
+    driver: bridge
+
+volumes:
+  redis_data_dev:
+  ai_models_dev:

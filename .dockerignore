@@ -1,0 +1,98 @@
+# Docker ignore file for AI Content Creator
+
+# Git and version control
+.git
+.gitignore
+*.git*
+
+# Documentation
+README.md
+docs/
+*.md
+LICENSE
+
+# Python cache and build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Application specific
+data/
+logs/
+cache/
+temp/
+output/
+*.log
+*.tmp
+
+# Test files
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Development files
+notebooks/
+examples/output/
+*.ipynb_checkpoints
+
+# Docker files (for multi-stage builds)
+docker-compose.*.yml
+Dockerfile.*
+
+# Large model files (download at runtime)
+*.pt
+*.pth
+*.bin
+*.safetensors
+models/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/

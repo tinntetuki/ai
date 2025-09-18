@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Content Creator</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+    <link rel="icon" href="static/images/favicon.ico" type="image/x-icon">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --dark-bg: #1a1a2e;
+            --card-bg: #16213e;
+            --text-light: #e0e0e0;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark-bg) 0%, var(--card-bg) 100%);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            padding: 80px 0;
+            text-align: center;
+            color: white;
+        }
+
+        .hero-title {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .hero-subtitle {
+            font-size: 1.4rem;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: white;
+        }
+
+        .feature-description {
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary-color);
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: rgba(102, 126, 234, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: var(--accent-color);
+        }
+
+        .upload-area.dragover {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: var(--accent-color);
+        }
+
+        .progress-bar {
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .navbar {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+        }
+
+        .processing-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-pending { background: var(--warning-color); color: #000; }
+        .status-processing { background: var(--primary-color); color: #fff; }
+        .status-completed { background: var(--success-color); color: #fff; }
+        .status-failed { background: var(--danger-color); color: #fff; }
+
+        .tab-content {
+            padding: 30px 0;
+        }
+
+        .nav-tabs .nav-link {
+            color: var(--text-light);
+            border: none;
+            border-radius: 10px 10px 0 0;
+            margin-right: 5px;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .form-control {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-light);
+            border-radius: 10px;
+        }
+
+        .form-control:focus {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: var(--primary-color);
+            color: var(--text-light);
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-control::placeholder {
+            color: rgba(224, 224, 224, 0.6);
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-footer {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .spinner-border {
+            color: var(--primary-color);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, var(--success-color), #20c997);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 20px;
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+
+            .feature-card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-robot me-2"></i>AI Content Creator
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#processing">Processing</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs" target="_blank">API Docs</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">AI Content Creator</h1>
+            <p class="hero-subtitle">Transform your videos with cutting-edge AI technology</p>
+            <a href="#processing" class="btn btn-primary btn-lg">
+                <i class="fas fa-play me-2"></i>Get Started
+            </a>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">Powerful AI Features</h2>
+            <div class="row">
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                        <h3 class="feature-title">Video Upscaling</h3>
+                        <p class="feature-description">
+                            Enhance video quality with Real-ESRGAN super-resolution. Support for 2x, 4x, and 8x upscaling.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-microphone"></i>
+                        </div>
+                        <h3 class="feature-title">Speech Recognition</h3>
+                        <p class="feature-description">
+                            Convert speech to text using OpenAI Whisper. Multi-language support with high accuracy.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-volume-up"></i>
+                        </div>
+                        <h3 class="feature-title">Text-to-Speech</h3>
+                        <p class="feature-description">
+                            Generate natural-sounding voiceovers with multiple TTS engines and voice options.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h3 class="feature-title">Product Detection</h3>
+                        <p class="feature-description">
+                            Automatically detect and track products in videos with AI-powered object recognition.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Processing Section -->
+    <section id="processing" class="py-5">
+        <div class="container">
+            <h2 class="text-center mb-5">AI Processing Tools</h2>
+
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs justify-content-center mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#upscale-tab" type="button">
+                        <i class="fas fa-video me-2"></i>Video Upscaling
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#speech-tab" type="button">
+                        <i class="fas fa-microphone me-2"></i>Speech-to-Text
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tts-tab" type="button">
+                        <i class="fas fa-volume-up me-2"></i>Text-to-Speech
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#detection-tab" type="button">
+                        <i class="fas fa-search me-2"></i>Product Detection
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Video Upscaling Tab -->
+                <div class="tab-pane fade show active" id="upscale-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <div class="processing-card">
+                                <h4><i class="fas fa-video me-2"></i>Video Upscaling</h4>
+                                <p>Enhance your video quality using AI super-resolution technology.</p>
+
+                                <div class="upload-area" onclick="document.getElementById('upscale-file').click()">
+                                    <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                                    <h5>Upload Video File</h5>
+                                    <p>Click here or drag and drop your video file</p>
+                                    <small>Supported formats: MP4, AVI, MOV, MKV</small>
+                                    <input type="file" id="upscale-file" style="display: none;" accept="video/*">
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Upscaling Factor</label>
+                                        <select class="form-control" id="upscale-factor">
+                                            <option value="2">2x (Faster)</option>
+                                            <option value="4" selected>4x (Recommended)</option>
+                                            <option value="8">8x (Best Quality)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Model</label>
+                                        <select class="form-control" id="upscale-model">
+                                            <option value="RealESRGAN_x4plus">RealESRGAN x4+ (General)</option>
+                                            <option value="RealESRGAN_x2plus">RealESRGAN x2+ (Fast)</option>
+                                            <option value="RealESRGAN_x4plus_anime_6B">RealESRGAN Anime</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary mt-4" onclick="startUpscaling()">
+                                    <i class="fas fa-play me-2"></i>Start Upscaling
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Speech-to-Text Tab -->
+                <div class="tab-pane fade" id="speech-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <div class="processing-card">
+                                <h4><i class="fas fa-microphone me-2"></i>Speech-to-Text</h4>
+                                <p>Convert speech in your videos to accurate text transcriptions.</p>
+
+                                <div class="upload-area" onclick="document.getElementById('speech-file').click()">
+                                    <i class="fas fa-microphone fa-3x mb-3"></i>
+                                    <h5>Upload Audio/Video File</h5>
+                                    <p>Click here or drag and drop your file</p>
+                                    <small>Supported formats: MP4, MP3, WAV, M4A</small>
+                                    <input type="file" id="speech-file" style="display: none;" accept="audio/*,video/*">
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Model Size</label>
+                                        <select class="form-control" id="speech-model">
+                                            <option value="tiny">Tiny (Fastest)</option>
+                                            <option value="base" selected>Base (Recommended)</option>
+                                            <option value="small">Small (Better Quality)</option>
+                                            <option value="medium">Medium (High Quality)</option>
+                                            <option value="large">Large (Best Quality)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Language</label>
+                                        <select class="form-control" id="speech-language">
+                                            <option value="auto">Auto-detect</option>
+                                            <option value="zh">Chinese</option>
+                                            <option value="en">English</option>
+                                            <option value="ja">Japanese</option>
+                                            <option value="ko">Korean</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Output Format</label>
+                                        <select class="form-control" id="speech-format">
+                                            <option value="json">JSON</option>
+                                            <option value="srt">SRT Subtitles</option>
+                                            <option value="vtt">WebVTT</option>
+                                            <option value="txt">Plain Text</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Keywords (Optional)</label>
+                                        <input type="text" class="form-control" id="speech-keywords" placeholder="product, demo, review">
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary mt-4" onclick="startTranscription()">
+                                    <i class="fas fa-play me-2"></i>Start Transcription
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Text-to-Speech Tab -->
+                <div class="tab-pane fade" id="tts-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <div class="processing-card">
+                                <h4><i class="fas fa-volume-up me-2"></i>Text-to-Speech</h4>
+                                <p>Generate natural-sounding speech from text or create voiceovers.</p>
+
+                                <div class="row">
+                                    <div class="col-12">
+                                        <label class="form-label">Input Text</label>
+                                        <textarea class="form-control" id="tts-text" rows="5" placeholder="Enter the text you want to convert to speech..."></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Voice Provider</label>
+                                        <select class="form-control" id="tts-provider">
+                                            <option value="edge">Microsoft Edge TTS</option>
+                                            <option value="gtts">Google TTS</option>
+                                            <option value="pyttsx3">System TTS</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Language</label>
+                                        <select class="form-control" id="tts-language">
+                                            <option value="zh-CN">Chinese (Simplified)</option>
+                                            <option value="en-US">English (US)</option>
+                                            <option value="ja-JP">Japanese</option>
+                                            <option value="ko-KR">Korean</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Voice</label>
+                                        <select class="form-control" id="tts-voice">
+                                            <option value="zh-CN-XiaoxiaoNeural">Xiaoxiao (Female)</option>
+                                            <option value="zh-CN-YunxiNeural">Yunxi (Male)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Style</label>
+                                        <select class="form-control" id="tts-style">
+                                            <option value="professional">Professional</option>
+                                            <option value="friendly">Friendly</option>
+                                            <option value="energetic">Energetic</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label">Speed</label>
+                                        <input type="range" class="form-range" id="tts-speed" min="0.5" max="2" step="0.1" value="1">
+                                        <small class="text-muted">1.0x</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Pitch</label>
+                                        <input type="range" class="form-range" id="tts-pitch" min="0.5" max="2" step="0.1" value="1">
+                                        <small class="text-muted">1.0x</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Volume</label>
+                                        <input type="range" class="form-range" id="tts-volume" min="0.1" max="2" step="0.1" value="1">
+                                        <small class="text-muted">1.0x</small>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary mt-4" onclick="startTTS()">
+                                    <i class="fas fa-play me-2"></i>Generate Speech
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Product Detection Tab -->
+                <div class="tab-pane fade" id="detection-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-8">
+                            <div class="processing-card">
+                                <h4><i class="fas fa-search me-2"></i>Product Detection</h4>
+                                <p>Automatically detect and analyze products in your videos.</p>
+
+                                <div class="upload-area" onclick="document.getElementById('detection-file').click()">
+                                    <i class="fas fa-video fa-3x mb-3"></i>
+                                    <h5>Upload Video File</h5>
+                                    <p>Click here or drag and drop your video file</p>
+                                    <small>Supported formats: MP4, AVI, MOV, MKV</small>
+                                    <input type="file" id="detection-file" style="display: none;" accept="video/*">
+                                </div>
+
+                                <div class="row mt-4">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Detection Model</label>
+                                        <select class="form-control" id="detection-model">
+                                            <option value="yolov8n.pt">YOLOv8 Nano (Fast)</option>
+                                            <option value="yolov8s.pt" selected>YOLOv8 Small (Balanced)</option>
+                                            <option value="yolov8m.pt">YOLOv8 Medium (Accurate)</option>
+                                            <option value="yolov8l.pt">YOLOv8 Large (Best)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Confidence Threshold</label>
+                                        <input type="range" class="form-range" id="detection-confidence" min="0.1" max="0.9" step="0.1" value="0.5">
+                                        <small class="text-muted">0.5</small>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Sample Rate (FPS)</label>
+                                        <input type="number" class="form-control" id="detection-fps" value="1" min="0.1" max="5" step="0.1">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Keywords (Optional)</label>
+                                        <input type="text" class="form-control" id="detection-keywords" placeholder="phone, laptop, camera">
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="detection-annotate" checked>
+                                            <label class="form-check-label" for="detection-annotate">
+                                                Create Annotated Video
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="detection-speech">
+                                            <label class="form-check-label" for="detection-speech">
+                                                Include Speech Analysis
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-primary mt-4" onclick="startDetection()">
+                                    <i class="fas fa-play me-2"></i>Start Detection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing Status -->
+            <div id="processing-status" class="mt-5" style="display: none;">
+                <h4>Processing Status</h4>
+                <div id="status-cards"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results-section" class="mt-5" style="display: none;">
+                <h4>Results</h4>
+                <div id="results-grid" class="results-grid"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-4 mt-5" style="background: var(--dark-bg);">
+        <div class="container text-center">
+            <p>&copy; 2024 AI Content Creator. Powered by cutting-edge AI technology.</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="static/js/app.js"></script>
+</body>
+</html>
